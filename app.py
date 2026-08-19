@@ -33,10 +33,12 @@ st.markdown("""
     div[data-testid="stMetricValue"] {
         font-size: 2rem;
     }
-    .result-card {
-        padding: 1.5rem;
-        border-radius: 12px;
-        margin-top: 1rem;
+    .field-error {
+        color: #D93025;
+        font-size: 12.5px;
+        margin-top: -12px;
+        margin-bottom: 8px;
+        font-weight: 600;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -73,7 +75,11 @@ payment_map = {
     "Mailed Check": "Mailed check"
 }
 
-# Sample profiles for one-click testing (great for demo video too)
+PLACEHOLDER = "-- Select --"
+
+def sel_options(opts):
+    return [PLACEHOLDER] + opts
+
 SAMPLES = {
     "High-risk prepaid user": dict(
         gender="Female", senior="No", partner="No", dependents="No", tenure=3,
@@ -93,24 +99,48 @@ SAMPLES = {
     )
 }
 
-# ============================================
-# INITIALIZE SESSION STATE (for sample-fill buttons)
-# ============================================
-defaults = dict(
-    gender="Male", senior="No", partner="Yes", dependents="No", tenure=12,
-    phone_service="Yes", multiple_lines="No", plan_type="Prepaid",
-    network_type="4G / Fiber-equivalent", online_security="No", online_backup="No",
-    device_protection="No", tech_support="No", streaming_tv="No", streaming_movies="No",
-    paperless_billing="Yes", payment_method="USSD / Bank Transfer",
-    monthly_charges=25.0, total_charges=300.0
-)
-for k, v in defaults.items():
+FIELD_KEYS = [
+    "gender", "senior", "partner", "dependents", "tenure", "phone_service",
+    "multiple_lines", "plan_type", "network_type", "online_security", "online_backup",
+    "device_protection", "tech_support", "streaming_tv", "streaming_movies",
+    "paperless_billing", "payment_method", "monthly_charges", "total_charges"
+]
+for k in FIELD_KEYS:
     if k not in st.session_state:
-        st.session_state[k] = v
+        st.session_state[k] = None
+
+if "submit_attempted" not in st.session_state:
+    st.session_state.submit_attempted = False
 
 def load_sample(name):
     for k, v in SAMPLES[name].items():
         st.session_state[k] = v
+    st.session_state.submit_attempted = False
+
+def clear_form():
+    for k in FIELD_KEYS:
+        st.session_state[k] = None
+    st.session_state.submit_attempted = False
+
+def is_empty(key):
+    return st.session_state[key] in (None, PLACEHOLDER)
+
+def error_note(key):
+    """Show a red 'required' note under a field if it's empty AND the user already tried to submit."""
+    if st.session_state.submit_attempted and is_empty(key):
+        st.markdown("<div class='field-error'>⚠️ This field is required</div>", unsafe_allow_html=True)
+
+# ============================================
+# HELPER WIDGETS (wrap + auto-show error note)
+# ============================================
+def field_select(label, options, key, help=None):
+    st.selectbox(label, sel_options(options), key=key, help=help)
+    error_note(key)
+
+def field_number(label, key, min_value, max_value, step, placeholder, help=None):
+    st.number_input(label, min_value=min_value, max_value=max_value, value=None,
+                     step=step, placeholder=placeholder, key=key, help=help)
+    error_note(key)
 
 # ============================================
 # SIDEBAR
@@ -126,8 +156,10 @@ with st.sidebar:
     st.markdown("**Recall (churners caught):** 80%")
     st.markdown("---")
     st.markdown("### ⚡ Try a sample profile")
+    st.caption("Auto-fills every field for a quick demo")
     for name in SAMPLES:
         st.button(name, on_click=load_sample, args=(name,), use_container_width=True)
+    st.button("🧹 Clear form", on_click=clear_form, use_container_width=True)
     st.markdown("---")
     st.caption("3MTT NextGen Capstone Project · Built with Streamlit")
 
@@ -135,7 +167,12 @@ with st.sidebar:
 # HEADER
 # ============================================
 st.title("📶 Telecom Churn Predictor")
-st.write("Enter a subscriber's details below to predict their risk of switching networks.")
+st.write("Fill in every field below, then click **Predict Churn Risk**. All fields are required.")
+
+missing_count = sum(1 for k in FIELD_KEYS if is_empty(k))
+if st.session_state.submit_attempted and missing_count > 0:
+    st.error(f"⚠️ {missing_count} field(s) still empty — check the fields marked in red below.")
+
 st.markdown("")
 
 # ============================================
@@ -146,48 +183,54 @@ tab1, tab2, tab3 = st.tabs(["👤 Subscriber Profile", "📡 Plan & Services", "
 with tab1:
     c1, c2 = st.columns(2)
     with c1:
-        gender = st.selectbox("Gender", ["Male", "Female"], key="gender")
-        partner = st.selectbox("Has Partner", ["Yes", "No"], key="partner")
-        tenure = st.slider("Tenure with network (months)", 0, 72, key="tenure",
-                            help="How long the subscriber has been with the network")
+        field_select("Gender", ["Male", "Female"], "gender")
+        field_select("Has Partner", ["Yes", "No"], "partner")
+        field_number("Tenure with network (months)", "tenure", 0, 72, 1, "Enter number of months",
+                     help="How long the subscriber has been with the network")
     with c2:
-        senior = st.selectbox("Senior Citizen (60+)", ["No", "Yes"], key="senior")
-        dependents = st.selectbox("Has Dependents", ["Yes", "No"], key="dependents")
-        phone_service = st.selectbox("Phone Service", ["Yes", "No"], key="phone_service")
+        field_select("Senior Citizen (60+)", ["No", "Yes"], "senior")
+        field_select("Has Dependents", ["Yes", "No"], "dependents")
+        field_select("Phone Service", ["Yes", "No"], "phone_service")
 
 with tab2:
     c1, c2 = st.columns(2)
     with c1:
-        plan_type = st.selectbox("Plan Type", list(contract_map.keys()), key="plan_type",
-                                  help="Prepaid = no contract lock-in, easiest to churn")
-        network_type = st.selectbox("Network / Data Type", list(internet_map.keys()), key="network_type")
-        multiple_lines = st.selectbox("Multiple SIM Lines", ["No", "Yes", "No phone service"], key="multiple_lines")
-        online_security = st.selectbox("Data/Account Security Add-on", ["No", "Yes", "No internet service"], key="online_security")
-        online_backup = st.selectbox("Cloud Backup Add-on", ["No", "Yes", "No internet service"], key="online_backup")
+        field_select("Plan Type", list(contract_map.keys()), "plan_type",
+                     help="Prepaid = no contract lock-in, easiest to churn")
+        field_select("Network / Data Type", list(internet_map.keys()), "network_type")
+        field_select("Multiple SIM Lines", ["No", "Yes", "No phone service"], "multiple_lines")
+        field_select("Data/Account Security Add-on", ["No", "Yes", "No internet service"], "online_security")
+        field_select("Cloud Backup Add-on", ["No", "Yes", "No internet service"], "online_backup")
     with c2:
-        tech_support = st.selectbox("Customer Care Support Plan", ["No", "Yes", "No internet service"], key="tech_support")
-        device_protection = st.selectbox("Device Protection Plan", ["No", "Yes", "No internet service"], key="device_protection")
-        streaming_tv = st.selectbox("Streaming TV Bundle", ["No", "Yes", "No internet service"], key="streaming_tv")
-        streaming_movies = st.selectbox("Streaming Movies Bundle", ["No", "Yes", "No internet service"], key="streaming_movies")
-        payment_method = st.selectbox("Payment Channel", list(payment_map.keys()), key="payment_method")
-        paperless_billing = st.selectbox("Paperless/Digital Billing", ["Yes", "No"], key="paperless_billing")
+        field_select("Customer Care Support Plan", ["No", "Yes", "No internet service"], "tech_support")
+        field_select("Device Protection Plan", ["No", "Yes", "No internet service"], "device_protection")
+        field_select("Streaming TV Bundle", ["No", "Yes", "No internet service"], "streaming_tv")
+        field_select("Streaming Movies Bundle", ["No", "Yes", "No internet service"], "streaming_movies")
+        field_select("Payment Channel", list(payment_map.keys()), "payment_method")
+        field_select("Paperless/Digital Billing", ["Yes", "No"], "paperless_billing")
 
 with tab3:
     c1, c2 = st.columns(2)
     with c1:
-        monthly_charges = st.number_input("Average Monthly Spend (₦, in thousands)",
-                                           min_value=0.0, max_value=100.0, step=0.5, key="monthly_charges")
+        field_number("Average Monthly Spend (₦, in thousands)", "monthly_charges",
+                     0.0, 100.0, 0.5, "e.g. 25.0")
     with c2:
-        total_charges = st.number_input("Total Lifetime Spend (₦, in thousands)",
-                                         min_value=0.0, max_value=5000.0, step=10.0, key="total_charges")
+        field_number("Total Lifetime Spend (₦, in thousands)", "total_charges",
+                     0.0, 5000.0, 10.0, "e.g. 300.0")
 
 st.markdown("")
 predict_clicked = st.button("🔍 Predict Churn Risk", type="primary", use_container_width=True)
 
 # ============================================
-# PREDICT
+# VALIDATE + PREDICT
 # ============================================
 if predict_clicked:
+    st.session_state.submit_attempted = True
+    missing = [k for k in FIELD_KEYS if is_empty(k)]
+
+    if missing:
+        st.rerun()  # rerun so red notes appear under each empty field immediately
+
     input_data = {
         'gender': st.session_state.gender,
         'SeniorCitizen': 1 if st.session_state.senior == "Yes" else 0,
