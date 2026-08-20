@@ -326,7 +326,7 @@ with main_tab1:
     with tab3:
         st.info(
             "📊 **Why these caps?** The model was trained on the IBM Telco Customer Churn dataset, "
-            "where Monthly Charges ranged **$18.25–$118.75** and Total Charges ranged **$18.80–$8,684.80** "
+            "where Monthly Charges ranged **USD 18.25–118.75** and Total Charges ranged **USD 18.80–8,684.80** "
             "(scaled ×1000 here to represent Naira). Input limits are capped at this range because a Logistic "
             "Regression model extrapolates unreliably beyond the data it was trained on."
         )
@@ -334,11 +334,11 @@ with main_tab1:
         with c1:
             field_number("Average Monthly Spend (₦)", "monthly_charges",
                          0.0, 120000.0, 500.0, "e.g. 25000",
-                         note="Capped at ₦120,000 — matches the training data's maximum monthly charge ($118.75 × 1000).")
+                         note="Capped at ₦120,000 — matches the training data's maximum monthly charge (USD 118.75 × 1000).")
         with c2:
             field_number("Total Lifetime Spend (₦)", "total_charges",
                          0.0, 8700000.0, 5000.0, "e.g. 300000",
-                         note="Capped at ₦8,700,000 — matches the training data's maximum total charge ($8,684.80 × 1000).")
+                         note="Capped at ₦8,700,000 — matches the training data's maximum total charge (USD 8,684.80 × 1000).")
 
     st.markdown("")
     predict_clicked = st.button("🔍 Predict Churn Risk", type="primary", use_container_width=True)
