@@ -4,8 +4,8 @@ A machine learning web app that predicts customer churn risk for telecom subscri
 
 Built as a capstone project for the **3MTT NextGen Fellowship Program**.
 
-**🔗 Live App:** [Add your Streamlit link here]
-**🎥 Demo Video:** [Add your video link here]
+**🔗 Live App:** https://telecom-churn-predictor-j7tfvvyz9ln6geak5pgxau.streamlit.app/
+**🎥 Demo Video:** https://youtu.be/eQZ3fT0yqqI?si=eJPJt4EHzspDtw5m
 
 ---
 
